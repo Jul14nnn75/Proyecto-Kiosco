@@ -1,182 +1,189 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
+from datetime import datetime
 from venta import Venta
 from detalle_venta import DetalleVenta
 from metodopago import MetodoPago
 
-class AppVenta:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Sistema de Ventas - Kiosco")
-        self.root.geometry("600x650")
+class POSWindow(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Sistema de Facturación")
+        self.geometry("1000x650")
+        self.configure(bg="#dfe6e9")
 
-        self.venta = None
+        self.venta = Venta("CONSUMIDOR FINAL")
 
-        # --- Detalles ---
-        frame_detalle = tk.LabelFrame(root, text="Agregar producto", padx=10, pady=10)
-        frame_detalle.pack(pady=10, fill="x")
+        self.create_form()
+        self.create_table()
+        self.create_total_display()
+        self.create_buttons()
 
-        tk.Label(frame_detalle, text="Producto:").grid(row=0, column=0)
-        self.entry_producto = tk.Entry(frame_detalle)
-        self.entry_producto.grid(row=0, column=1)
+        # Atajos de teclado
+        self.bind_all("<KeyPress-F1>", lambda e: self.registrar_venta())
+        self.bind_all("<KeyPress-F3>", lambda e: self.modificar_cantidad())
+        self.bind_all("<KeyPress-F4>", lambda e: self.agregar_producto())
+        self.bind_all("<KeyPress-F5>", lambda e: self.borrar_producto())
+        self.bind_all("<KeyPress-F7>", lambda e: self.registrar_pago("Efectivo"))
+        self.bind_all("<KeyPress-F8>", lambda e: self.registrar_pago("Tarjeta"))
+        self.bind_all("<KeyPress-F9>", lambda e: self.agregar_varios())
+        self.bind_all("<KeyPress-F12>", lambda e: self.cerrar_sistema())
 
-        tk.Label(frame_detalle, text="Cantidad:").grid(row=1, column=0)
-        self.entry_cantidad = tk.Entry(frame_detalle)
-        self.entry_cantidad.grid(row=1, column=1)
+    def create_form(self):
+        frame = tk.LabelFrame(self, text="Datos de Factura", bg="#dfe6e9", padx=10, pady=10)
+        frame.pack(fill="x", padx=10, pady=5)
 
-        tk.Label(frame_detalle, text="Precio:").grid(row=2, column=0)
-        self.entry_precio = tk.Entry(frame_detalle)
-        self.entry_precio.grid(row=2, column=1)
+        tk.Label(frame, text="Nombre:", bg="#dfe6e9", font=("Arial", 10, "bold")).grid(row=0, column=0, sticky="e", padx=5)
+        tk.Label(frame, text="CONSUMIDOR FINAL", bg="#dfe6e9", font=("Arial", 10)).grid(row=0, column=1, sticky="w")
 
-        tk.Button(frame_detalle, text="Agregar Producto [F7]", command=self.agregar_detalle).grid(row=3, column=0, columnspan=2, pady=5)
+        tk.Label(frame, text="Fecha:", bg="#dfe6e9", font=("Arial", 10, "bold")).grid(row=1, column=0, sticky="e", padx=5)
+        fecha_actual = datetime.now().strftime("%d/%m/%Y")
+        tk.Label(frame, text=fecha_actual, bg="#dfe6e9", font=("Arial", 10)).grid(row=1, column=1, sticky="w")
 
-        # --- Tabla ---
-        self.tree = ttk.Treeview(root, columns=("producto", "cantidad", "precio", "subtotal"), show="headings", height=10)
-        for col in ("producto", "cantidad", "precio", "subtotal"):
-            self.tree.heading(col, text=col.capitalize())
-            self.tree.column(col, anchor="center", width=120)
-        self.tree.pack(pady=10)
+        tk.Label(frame, text="Depósito:", bg="#dfe6e9", font=("Arial", 10, "bold")).grid(row=2, column=0, sticky="e", padx=5)
+        tk.Label(frame, text="PRINCIPAL", bg="#dfe6e9", font=("Arial", 10)).grid(row=2, column=1, sticky="w")
 
-        # --- Total ---
-        self.label_total = tk.Label(root, text="Total: $0.00", font=("Arial", 12, "bold"))
-        self.label_total.pack(pady=5)
+        tk.Label(frame, text="Producto:", bg="#dfe6e9").grid(row=0, column=2)
+        self.producto_entry = tk.Entry(frame, width=20)
+        self.producto_entry.grid(row=0, column=3)
 
-        # --- Atajos visualizados ---
-        self.label_atajos = tk.Label(root, text="Agregar[F7]  Eliminar[F5]  Cantidad[F3]  Varios[F9]", font=("Arial", 10, "bold"))
-        self.label_atajos.pack(pady=5)
+        tk.Label(frame, text="Cantidad:", bg="#dfe6e9").grid(row=1, column=2)
+        self.cantidad_entry = tk.Entry(frame, width=10)
+        self.cantidad_entry.grid(row=1, column=3)
+        self.cantidad_entry.insert(0, "1")
 
-        # --- Botones de acción ---
-        frame_botones = tk.Frame(root)
-        frame_botones.pack(pady=5)
+        tk.Label(frame, text="Precio:", bg="#dfe6e9").grid(row=2, column=2)
+        self.precio_entry = tk.Entry(frame, width=10)
+        self.precio_entry.grid(row=2, column=3)
+        self.precio_entry.insert(0, "0.00")
 
-        tk.Button(frame_botones, text="Agregar [F7]", width=12, command=self.agregar_detalle).grid(row=0, column=0, padx=5)
-        tk.Button(frame_botones, text="Eliminar [F5]", width=12, command=self.eliminar_producto).grid(row=0, column=1, padx=5)
-        tk.Button(frame_botones, text="Cantidad [F3]", width=12, command=self.modificar_cantidad).grid(row=0, column=2, padx=5)
-        tk.Button(frame_botones, text="Varios [F9]", width=12, command=self.agregar_varios).grid(row=0, column=3, padx=5)
+    def create_table(self):
+        table_frame = tk.Frame(self, bg="#dfe6e9")
+        table_frame.pack(padx=10, pady=10)
 
-        # --- Eventos de teclado globales ---
-        self.root.bind_all("<Key>", self.atajos)
+        columns = ("Código", "Descripción", "Cantidad", "Venta", "Total")
+        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=10)
+        for col in columns:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, width=180, anchor="center")
+        self.tree.pack()
 
-        # --- Inicializar venta ---
-        self.iniciar_venta()
+    def create_total_display(self):
+        frame = tk.Frame(self, bg="#dfe6e9")
+        frame.pack(pady=10)
+        tk.Label(frame, text="TOTAL:", font=("Arial", 16, "bold"), bg="#dfe6e9").pack(side="left")
+        self.total_label = tk.Label(frame, text="0.00", font=("Arial", 28, "bold"), fg="red", bg="#dfe6e9")
+        self.total_label.pack(side="left", padx=20)
 
-    def iniciar_venta(self):
-        self.venta = Venta("Consumidor Final")
+    def create_buttons(self):
+        frame = tk.Frame(self, bg="#dfe6e9")
+        frame.pack(pady=10)
 
-    def agregar_detalle(self):
-        producto = self.entry_producto.get().strip()
+        botones = [
+            ("F1) Registrar", self.registrar_venta),
+            ("F3) Cantidad", self.modificar_cantidad),
+            ("F4) Agregar", self.agregar_producto),
+            ("F5) Borrar", self.borrar_producto),
+            ("F7) Efectivo", lambda: self.registrar_pago("Efectivo")),
+            ("F8) Tarjeta", lambda: self.registrar_pago("Tarjeta")),
+            ("F9) Varios", self.agregar_varios),
+            ("F12) Cerrar", self.cerrar_sistema)
+        ]
+
+        for i, (text, cmd) in enumerate(botones):
+            tk.Button(frame, text=text, width=12, height=2, font=("Arial", 9), command=cmd).grid(row=0, column=i, padx=5)
+
+    def agregar_producto(self):
+        producto = self.producto_entry.get().strip()
         if not producto:
-            messagebox.showwarning("Advertencia", "Ingrese nombre del producto o use F9 para 'Varios'")
+            messagebox.showwarning("Error", "Debe ingresar un nombre de producto.")
             return
 
         try:
-            cantidad_text = self.entry_cantidad.get().strip()
-            cantidad = int(cantidad_text) if cantidad_text else 1
-            precio = float(self.entry_precio.get())
+            cantidad = int(self.cantidad_entry.get())
+            precio = float(self.precio_entry.get())
         except ValueError:
-            messagebox.showerror("Error", "Verifique los valores ingresados")
+            messagebox.showerror("Error", "Cantidad y precio deben ser numéricos.")
             return
 
         detalle = DetalleVenta(producto, cantidad, precio)
         self.venta.agregar_detalle(detalle)
 
-        self.tree.insert("", "end", values=(producto, cantidad, f"${precio:.2f}", f"${detalle.subtotal():.2f}"))
-        self.label_total.config(text=f"Total: ${self.venta.total():.2f}")
+        self.tree.insert("", "end", values=(producto, producto, cantidad, f"${precio:.2f}", f"${detalle.subtotal():.2f}"))
+        self.actualizar_total()
 
-        self.entry_producto.delete(0, tk.END)
-        self.entry_cantidad.delete(0, tk.END)
-        self.entry_precio.delete(0, tk.END)
+        self.producto_entry.delete(0, tk.END)
+        self.precio_entry.delete(0, tk.END)
+        self.precio_entry.insert(0, "0.00")
+        self.cantidad_entry.delete(0, tk.END)
+        self.cantidad_entry.insert(0, "1")
 
-    def agregar_varios(self, event=None):
-        # Producto genérico "Varios"
-        producto = "Varios"
-
-        try:
-            # Solo pedimos precio unitario
-            precio = simpledialog.askfloat("Varios", "Ingrese precio unitario:", initialvalue=0.0, minvalue=0.0)
-            if precio is None:
-                return
-        except:
-            messagebox.showerror("Error", "Valor inválido")
-            return
-
-        # Cantidad por defecto como 1
-        cantidad = 1
-
-        detalle = DetalleVenta(producto, cantidad, precio)
-        self.venta.agregar_detalle(detalle)
-        self.tree.insert("", "end", values=(producto, cantidad, f"${precio:.2f}", f"${detalle.subtotal():.2f}"))
-        self.label_total.config(text=f"Total: ${self.venta.total():.2f}")
-
-    def eliminar_producto(self, event=None):
-        self.tree.focus_set()
+    def borrar_producto(self):
         selected = self.tree.selection()
-        items = self.tree.get_children()
-
         if selected:
             item = selected[0]
             index = self.tree.index(item)
-            self.venta.detalles.pop(index)
             self.tree.delete(item)
-        elif items:
-            item = items[-1]
-            self.venta.detalles.pop(-1)
+            del self.venta.detalles[index]
+        elif self.tree.get_children():
+            item = self.tree.get_children()[-1]
+            index = self.tree.index(item)
             self.tree.delete(item)
+            del self.venta.detalles[index]
         else:
+            messagebox.showinfo("Aviso", "No hay productos para borrar.")
             return
 
-        self.label_total.config(text=f"Total: ${self.venta.total():.2f}")
+        self.actualizar_total()
 
-    def modificar_cantidad(self, event=None):
-        selected = self.tree.selection()
-        if not selected:
-            messagebox.showwarning("Advertencia", "Seleccione un producto para modificar la cantidad")
+    def modificar_cantidad(self):
+        try:
+            nueva_cantidad = simpledialog.askinteger("Cantidad", "Ingrese la cantidad para esta venta:", minvalue=1)
+            if nueva_cantidad:
+                self.cantidad_entry.delete(0, tk.END)
+                self.cantidad_entry.insert(0, str(nueva_cantidad))
+                self.agregar_producto()
+        except:
+            messagebox.showerror("Error", "Cantidad inválida.")
+
+    def actualizar_total(self):
+        total = self.venta.total()
+        self.total_label.config(text=f"{total:.2f}")
+
+    def registrar_pago(self, tipo):
+        monto = self.venta.total()
+        pago = MetodoPago(tipo, monto)
+        self.venta.registrar_pago(pago)
+        messagebox.showinfo("Pago registrado", str(pago))
+
+    def agregar_varios(self):
+        precio = simpledialog.askfloat("VARIOS", "Ingrese el precio para producto VARIOS:")
+        if precio is None:
             return
 
-        # Mostramos un cartelito indicando "Cantidad"
-        messagebox.showinfo("Cantidad", "Ingrese la nueva cantidad")
+        detalle = DetalleVenta("VARIOS", 1, precio)
+        self.venta.agregar_detalle(detalle)
+        self.tree.insert("", "end", values=("VARIOS", "VARIOS", 1, f"${precio:.2f}", f"${precio:.2f}"))
+        self.actualizar_total()
 
-        item = selected[0]
-        index = self.tree.index(item)
-        detalle = self.venta.detalles[index]
-
-        nueva_cantidad = simpledialog.askinteger("Modificar Cantidad",
-                                                 f"Ingrese nueva cantidad para {detalle.producto}:",
-                                                 initialvalue=detalle.cantidad, minvalue=1)
-        if nueva_cantidad:
-            detalle.cantidad = nueva_cantidad
-            subtotal = detalle.subtotal()
-            self.tree.item(item, values=(detalle.producto, detalle.cantidad, f"${detalle.precio_unitario:.2f}", f"${subtotal:.2f}"))
-            self.label_total.config(text=f"Total: ${self.venta.total():.2f}")
-
-    def registrar_venta(self, event=None):
+    def registrar_venta(self):
         if not self.venta.detalles:
-            messagebox.showwarning("Advertencia", "No hay productos para registrar")
+            messagebox.showwarning("Advertencia", "No hay productos para registrar.")
             return
-        metodo = MetodoPago("Efectivo", self.venta.total())
-        self.venta.registrar_pago(metodo)
-        messagebox.showinfo("Venta Registrada", str(self.venta))
 
-        # Limpiar tabla y total
+        resumen = str(self.venta)
+        messagebox.showinfo("Venta registrada", resumen)
+
         for item in self.tree.get_children():
             self.tree.delete(item)
-        self.label_total.config(text="Total: $0.00")
-        self.iniciar_venta()
+        self.venta = Venta("CONSUMIDOR FINAL")
+        self.actualizar_total()
 
-    # --- Función central de atajos ---
-    def atajos(self, event):
-        if event.keysym == "F3":
-            self.modificar_cantidad()
-        elif event.keysym == "F5":
-            self.eliminar_producto()
-        elif event.keysym == "F7":
-            self.agregar_detalle()
-        elif event.keysym == "F9":
-            self.agregar_varios()
-
+    def cerrar_sistema(self):
+        confirmar = messagebox.askyesno("Cerrar sistema", "¿Desea cerrar el sistema?")
+        if confirmar:
+            self.destroy()
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = AppVenta(root)
-    root.mainloop()
-
+    app = POSWindow()
+    app.mainloop()
