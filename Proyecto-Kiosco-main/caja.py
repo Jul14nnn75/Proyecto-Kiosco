@@ -1,12 +1,13 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
-
+from ventana import POSWindow
 class CajaApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Menu Caja")
         self.monto_apertura = None  # La caja está cerrada por defecto
+        self.ventas_realizadas = []
 
         # Posicionar ventana a la izquierda y centrada verticalmente
         ancho_ventana = 300
@@ -39,7 +40,15 @@ class CajaApp(tk.Tk):
         if self.monto_apertura is None:
             messagebox.showerror("Error", "Para facturar la caja debe estar abierta.")
             return
-        print("Caja abierta, listo para facturar.")
+        
+        ventana_factura = POSWindow(caja=self)
+        ventana_factura.grab_set()
+        ancho = 1000
+        alto = 650
+        x = 320
+        y = (ventana_factura.winfo_screenheight()- alto ) // 2
+        ventana_factura.geometry(f"{ancho}x{alto}+{x}+{y}")
+        
 
     def accion_apertura(self):
         if self.monto_apertura is not None:
@@ -235,21 +244,81 @@ class CajaApp(tk.Tk):
         if self.monto_apertura is None:
             messagebox.showerror("Error", "La caja ya está cerrada.")
             return
+        
+        popup = tk.Toplevel(self)
+        popup.title("Cierre de Caja")
+        popup.geometry("750x520")
+        popup.transient(self)
+        popup.grab_set()
 
-        ahora = datetime.now()
-        fecha = ahora.strftime("%d/%m/%Y")
-        hora = ahora.strftime("%H:%M:%S")
+        x = (self.winfo_screenwidth() - 750) // 2
+        y = (self.winfo_screenheight() - 520) // 2
+        popup.geometry(f"+{x}+{y}")
 
-        monto_formateado = f"{int(self.monto_apertura):,}".replace(",", ".")
+        #Creo pestañas
 
-        mensaje = (
-            f"Caja cerrada correctamente.\n"
-            f"Fecha: {fecha}\n"
-            f"Hora: {hora}\n"
-            f"Monto final: ${monto_formateado}"
-        )
-        messagebox.showinfo("Cierre de Caja", mensaje)
+        notebook = ttk.Notebook(popup)
+        notebook.pack(fill="both",expand=True,padx=10,pady=10)
+
+
+        frame_efectivo = ttk.Frame(notebook)
+        frame_tarjeta = ttk.Frame(notebook)
+        notebook.add(frame_efectivo,text="1) Efectivo")
+        notebook.add(frame_tarjeta,text="2) Tarjetas")
+        
+
+        #Apertura
+        apertura_tree = ttk.Treeview(frame_efectivo,columns=("Fecha", "Descripcion", "Importe","Saldo"),show="headings",height=1)
+        for col in ("Fecha","Descripcion","Importe","Saldo"):
+            apertura_tree.heading(col,text=col)
+            apertura_tree.column(col,anchor="center",width=170)
+        fecha_apertura = datetime.now().strftime("%d/%m/%Y %H:%M")
+        apertura_tree.insert("","end",values=(fecha_apertura,"APERTURA DE CAJA",f"${self.monto_apertura:.2f}",f"${self.monto_apertura:.2f}"))
+        apertura_tree.pack(pady=10)
+
+        stats_frame = ttk.Frame(frame_efectivo)
+        stats_frame.pack(pady=10,fill="x")
+
+
+        #Esto es temporal
+        ventas = self.ventas_realizadas
+        total_clientes = len(ventas)
+        total_ventas = sum(v.total() for v in ventas)
+        promedio_ventas = total_ventas / total_clientes if total_clientes else 0
+        ventas_cta_cte = sum(v.total() for v in ventas if v.metodo_pago and v.metodo_pago.tipo == "Tarjeta")
+        saldo_sistema = total_ventas
+        importe_en_caja = self.monto_apertura
+        diferencia = importe_en_caja - saldo_sistema
+
+        izquierda = ttk.Frame(stats_frame)
+        izquierda.pack(side="left",padx=20)
+
+        ttk.Label(izquierda,text=f"Total Clientes: {total_clientes:.2f}").pack(anchor="w")
+        ttk.Label(izquierda,text=f"Total Ventas: {total_ventas:.2f}").pack(anchor="w")
+        ttk.Label(izquierda,text=f" Ventas Productos: {promedio_ventas:.2f}").pack(anchor="w")
+        ttk.Label(izquierda,text=f" Ventas Cta Cte: {ventas_cta_cte:.2f}").pack(anchor="w")
+
+        derecha = ttk.Frame(stats_frame)
+        derecha.pack(side="right",padx=20)
+
+        ttk.Label(derecha,text=f"Saldo Sistema: ${saldo_sistema:.2f}",foreground="green").pack(anchor="e")
+        ttk.Label(derecha, text=f"Importe En Caja: ${importe_en_caja:.2f}", foreground="red").pack(anchor="e")
+        ttk.Label(derecha, text=f"Diferencia De Caja: ${diferencia:.2f}").pack(anchor="e")
+
+        botones = ttk.Frame(popup)
+        botones.pack(pady=15,fill="x")
+
+        ttk.Button(botones,text="Imprime").pack(side="left",padx=10)
+        ttk.Button(botones,text="Aceptar",command=lambda:self.finalizar_caja(popup)).pack(side="right",padx=10)
+        ttk.Button(botones,text="Cancelar",command=popup.destroy).pack(side="right",padx=10)
+
+
+    def finalizar_caja(self,ventana):
+        print("Caja cerrada correctamente")
         self.monto_apertura = None
+        ventana.destroy()
+        
+
 
     def accion_impresora(self):
         print("Impresora presionado")
