@@ -37,20 +37,25 @@ CREATE TABLE proveedor (
     direccion TEXT
 );
 
+
+CREATE TABLE categoria (
+    id_categoria INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100),
+    id_producto INT,
+    FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+);
+
 CREATE TABLE producto (
     id_producto INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100),
     descripcion TEXT,
     precio DECIMAL(10,2),
     id_proveedor INT,
-    FOREIGN KEY (id_proveedor) REFERENCES proveedor(id_proveedor)
+    id_categoria INT,
+    FOREIGN KEY (id_proveedor) REFERENCES proveedor(id_proveedor),
+    FOREIGN KEY (id_categoria) REFERENCES categoria(id_categoria)
 );
-CREATE TABLE categoria (
-    id_categoria INT AUTO_INCREMET PRIMARY KEY,
-    nombre VARCHAR(100),
-    id_producto INT,
-    FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
-);
+
 CREATE TABLE stock (
     id_stock INT AUTO_INCREMENT PRIMARY KEY,
     id_producto INT,
