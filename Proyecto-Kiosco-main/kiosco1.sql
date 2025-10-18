@@ -45,7 +45,12 @@ CREATE TABLE producto (
     id_proveedor INT,
     FOREIGN KEY (id_proveedor) REFERENCES proveedor(id_proveedor)
 );
-
+CREATE TABLE categoria (
+    id_categoria INT AUTO_INCREMET PRIMARY KEY,
+    nombre VARCHAR(100),
+    id_producto INT,
+    FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+);
 CREATE TABLE stock (
     id_stock INT AUTO_INCREMENT PRIMARY KEY,
     id_producto INT,
