@@ -40,17 +40,15 @@ CREATE TABLE proveedor (
 
 CREATE TABLE categoria (
     id_categoria INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(100),
-    id_producto INT,
-    FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+    nombre VARCHAR(100)
 );
 
 CREATE TABLE producto (
     id_producto INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100),
-    descripcion TEXT,
     precio DECIMAL(10,2),
-    id_proveedor INT,
+    codigo_articulo INT,
+    id_proveedor INT NULL,
     id_categoria INT,
     FOREIGN KEY (id_proveedor) REFERENCES proveedor(id_proveedor),
     FOREIGN KEY (id_categoria) REFERENCES categoria(id_categoria)
@@ -163,5 +161,10 @@ CREATE TABLE inventario_movimiento (
 
 INSERT INTO metodo_pago (tipo) VALUES ('Efectivo'), ('Tarjeta'), ('Transferencia');
 
+INSERT INTO proveedor (nombre) VALUES ('Juan'), ('Maty'), ('Pedro');
+
+INSERT INTO categoria (nombre) VALUES ('Gaseosas'), ('Snacks'), ('Golosinas');
+
 INSERT INTO cliente (nombre, telefono, direccion) VALUES
 ('Cliente genérico', '0000-0000', 'Sin dirección');
+
