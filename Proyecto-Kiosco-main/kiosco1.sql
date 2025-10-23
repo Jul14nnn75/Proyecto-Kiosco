@@ -55,7 +55,6 @@ CREATE TABLE producto (
     FOREIGN KEY (id_categoria) REFERENCES categoria(id_categoria)
 );
 
-
 CREATE TABLE turno (
     id_turno INT AUTO_INCREMENT PRIMARY KEY,
     nombre_turno VARCHAR(50),
