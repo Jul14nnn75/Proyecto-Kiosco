@@ -48,19 +48,13 @@ CREATE TABLE producto (
     nombre VARCHAR(100),
     precio DECIMAL(10,2),
     codigo_articulo INT,
+    cantidad INT,
     id_proveedor INT NULL,
     id_categoria INT,
     FOREIGN KEY (id_proveedor) REFERENCES proveedor(id_proveedor),
     FOREIGN KEY (id_categoria) REFERENCES categoria(id_categoria)
 );
 
-CREATE TABLE stock (
-    id_stock INT AUTO_INCREMENT PRIMARY KEY,
-    id_producto INT,
-    cantidad INT,
-    fecha_actualizacion DATE,
-    FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
-);
 
 CREATE TABLE turno (
     id_turno INT AUTO_INCREMENT PRIMARY KEY,
