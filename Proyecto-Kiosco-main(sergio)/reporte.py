@@ -92,12 +92,12 @@ class ReporteWindow(tk.Toplevel):
         cancelar_btn.pack(side="right", padx=5)
         
         # Botón Limpiar
-        limpiar_btn = tk.Button(btn_frame, text="🗑️ Limpiar", 
+        limpiar_btn = tk.Button(btn_frame, text="Limpiar", 
                                command=self.limpiar_formulario,
                                bg="#95a5a6", fg="white", 
                                font=("Segoe UI", 11),
-                               relief="flat", padx=20, pady=10)
-        limpiar_btn.pack(side="left", padx=5)
+                               relief="flat", padx=15, pady=15)
+        limpiar_btn.pack(side="left", padx=10)
         
         self.reporte_text.focus_set()
         self.bind('<Return>', lambda e: self.enviar_reporte())
@@ -130,11 +130,11 @@ class ReporteWindow(tk.Toplevel):
             # ✅ CONFIGURACIÓN REAL DEL EMAIL - MODIFICA ESTOS DATOS
             smtp_server = "smtp.gmail.com"  # Para Gmail
             smtp_port = 587
-            email_from = "Software.Kiosco@gmail.com"  # ⚠️ CAMBIA POR TU EMAIL
-            email_password = "feyu zacq rcsc jedy"  # ⚠️ CAMBIA POR TU PASSWORD
-            
+            email_from = "Software.Kiosco@gmail.com"  
+            email_password = "feyu zacq rcsc jedy"  
+
             # Email de destino
-            email_to = "sergiomanslla384@gmail.com"  # ⚠️ CAMBIA POR EL EMAIL DE DESTINO
+            email_to = "thiagovillalba63@gmail.com"  
             
             # Crear mensaje
             mensaje = MIMEMultipart()

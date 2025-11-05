@@ -1,7 +1,6 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
+from tkinter import ttk, messagebox
 from datetime import datetime
-import csv, os
 from ventana import POSWindow
 
 class CajaApp(tk.Tk):
@@ -67,10 +66,7 @@ class CajaApp(tk.Tk):
     def configurar_estilo(self):
         """Configura el estilo minimalista para los widgets"""
         style = ttk.Style()
-        try:
-            style.theme_use('clam')
-        except Exception:
-            pass
+        style.theme_use('clam')
         
         # Configurar estilo de botones
         style.configure('Caja.TButton',
@@ -407,136 +403,95 @@ class CajaApp(tk.Tk):
         popup.bind('<Return>', lambda e: aceptar())
         popup.bind('<Escape>', lambda e: cancelar())
 
-    # ------------------ CIERRE DE CAJA NUEVO ------------------
     def accion_cierre(self):
         if self.monto_apertura is None:
             messagebox.showerror("Error", "La caja tiene que estar abierta para poder cerrarla.")
             return
-
+        
         popup = tk.Toplevel(self)
-        popup.title("🔒 Cierre de Caja")
-        popup.geometry("600x500")
+        popup.title("Cierre de Caja")
+        popup.geometry("750x520")
         popup.transient(self)
         popup.grab_set()
         popup.configure(bg=self.bg_color)
 
-        x = (self.winfo_screenwidth() - 600) // 2
-        y = (self.winfo_screenheight() - 500) // 2
+        x = (self.winfo_screenwidth() - 750) // 2
+        y = (self.winfo_screenheight() - 520) // 2
         popup.geometry(f"+{x}+{y}")
 
-        # FRAME PRINCIPAL
-        content_frame = tk.Frame(popup, bg=self.card_color, padx=20, pady=20, relief="flat", bd=1)
-        content_frame.pack(fill="both", expand=True, padx=15, pady=15)
+        # Notebook con pestañas
+        notebook = ttk.Notebook(popup)
+        notebook.pack(fill="both", expand=True, padx=10, pady=10)
 
-        tk.Label(content_frame, text="🧾 CIERRE DE CAJA", font=("Arial", 16, "bold"),
-                 bg=self.card_color, fg=self.text_color).pack(pady=(0, 15))
+        frame_efectivo = tk.Frame(notebook, bg=self.card_color)
+        frame_tarjeta = tk.Frame(notebook, bg=self.card_color)
+        notebook.add(frame_efectivo, text="1) 💵 Efectivo")
+        notebook.add(frame_tarjeta, text="2) 💳 Tarjetas")
 
-        # Obtener saldo de sistema (simulación desde ventas.csv)
-        self.saldo_sistema = self._obtener_saldo_sistema()
+        # Apertura
+        apertura_tree = ttk.Treeview(frame_efectivo, columns=("Fecha", "Descripcion", "Importe", "Saldo"), 
+                                   show="headings", height=1)
+        for col in ("Fecha", "Descripcion", "Importe", "Saldo"):
+            apertura_tree.heading(col, text=col)
+            apertura_tree.column(col, anchor="center", width=170)
+        
+        fecha_apertura = datetime.now().strftime("%d/%m/%Y %H:%M")
+        apertura_tree.insert("", "end", values=(fecha_apertura, "APERTURA DE CAJA", 
+                                              f"${self.monto_apertura:.2f}", f"${self.monto_apertura:.2f}"))
+        apertura_tree.pack(pady=10)
 
-        # SALDO DEL SISTEMA
-        frame_datos = tk.Frame(content_frame, bg=self.card_color)
-        frame_datos.pack(pady=5, fill="x")
+        # Estadísticas
+        stats_frame = tk.Frame(frame_efectivo, bg=self.card_color)
+        stats_frame.pack(pady=10, fill="x")
 
-        tk.Label(frame_datos, text="💻 Saldo del Sistema:", font=("Arial", 11, "bold"),
-                 bg=self.card_color, fg=self.text_color).grid(row=0, column=0, sticky="w")
-        self.lbl_sistema = tk.Label(frame_datos, text=f"${self.saldo_sistema:.2f}",
-                                   font=("Arial", 11), bg=self.card_color, fg=self.text_color)
-        self.lbl_sistema.grid(row=0, column=1, sticky="e", padx=20)
+        # Esto es temporal
+        ventas = self.ventas_realizadas
+        total_clientes = len(ventas)
+        total_ventas = sum(v.total() for v in ventas) if ventas else 0
+        promedio_ventas = total_ventas / total_clientes if total_clientes else 0
+        ventas_cta_cte = sum(v.total() for v in ventas if v.metodo_pago and v.metodo_pago.tipo == "Tarjeta") if ventas else 0
+        saldo_sistema = total_ventas
+        importe_en_caja = self.monto_apertura
+        diferencia = importe_en_caja - saldo_sistema
 
-        # IMPORTE EN CAJA
-        tk.Label(frame_datos, text="💵 Importe en Caja:", font=("Arial", 11, "bold"),
-                 bg=self.card_color, fg=self.text_color).grid(row=1, column=0, sticky="w", pady=10)
-        self.entry_caja = tk.Entry(frame_datos, font=("Arial", 11), justify="center", relief="solid", bd=1)
-        self.entry_caja.grid(row=1, column=1, sticky="e", padx=20)
+        izquierda = tk.Frame(stats_frame, bg=self.card_color)
+        izquierda.pack(side="left", padx=20)
 
-        # IMPORTE EN TRANSFERENCIA
-        tk.Label(frame_datos, text="🏦 Importe en Transferencia:", font=("Arial", 11, "bold"),
-                 bg=self.card_color, fg=self.text_color).grid(row=2, column=0, sticky="w", pady=10)
-        self.entry_transf = tk.Entry(frame_datos, font=("Arial", 11), justify="center", relief="solid", bd=1)
-        self.entry_transf.grid(row=2, column=1, sticky="e", padx=20)
+        tk.Label(izquierda, text=f"👥 Total Clientes: {total_clientes}", 
+                font=("Arial", 9), bg=self.card_color, fg=self.text_color).pack(anchor="w")
+        tk.Label(izquierda, text=f"💰 Total Ventas: ${total_ventas:.2f}", 
+                font=("Arial", 9), bg=self.card_color, fg=self.text_color).pack(anchor="w")
+        tk.Label(izquierda, text=f"📦 Ventas Productos: ${promedio_ventas:.2f}", 
+                font=("Arial", 9), bg=self.card_color, fg=self.text_color).pack(anchor="w")
+        tk.Label(izquierda, text=f"💳 Ventas Cta Cte: ${ventas_cta_cte:.2f}", 
+                font=("Arial", 9), bg=self.card_color, fg=self.text_color).pack(anchor="w")
 
-        # DIFERENCIA
-        tk.Label(frame_datos, text="📊 Diferencia de Caja:", font=("Arial", 12, "bold"),
-                 bg=self.card_color, fg=self.text_color).grid(row=3, column=0, sticky="w", pady=15)
-        self.lbl_diferencia = tk.Label(frame_datos, text="$ 0.00",
-                                      font=("Arial", 16, "bold"),
-                                      bg=self.card_color, fg=self.danger_color)
-        self.lbl_diferencia.grid(row=3, column=1, sticky="e", padx=20)
+        derecha = tk.Frame(stats_frame, bg=self.card_color)
+        derecha.pack(side="right", padx=20)
 
-        # BOTONES
-        btn_frame = tk.Frame(content_frame, bg=self.card_color)
-        btn_frame.pack(pady=25, fill="x")
+        tk.Label(derecha, text=f"💻 Saldo Sistema: ${saldo_sistema:.2f}", 
+                font=("Arial", 9, "bold"), bg=self.card_color, fg=self.success_color).pack(anchor="e")
+        tk.Label(derecha, text=f"💵 Importe En Caja: ${importe_en_caja:.2f}", 
+                font=("Arial", 9, "bold"), bg=self.card_color, fg=self.danger_color).pack(anchor="e")
+        tk.Label(derecha, text=f"📊 Diferencia: ${diferencia:.2f}", 
+                font=("Arial", 9), bg=self.card_color, fg=self.text_color).pack(anchor="e")
 
-        tk.Button(btn_frame, text="💰 Calcular Diferencia", bg=self.success_color,
-                  fg="white", font=("Arial", 11, "bold"), relief="flat",
-                  padx=15, pady=10, command=self._calcular_diferencia).pack(side="left", padx=10)
+        # Botones
+        botones = tk.Frame(popup, bg=self.bg_color)
+        botones.pack(pady=15, fill="x")
 
-        tk.Button(btn_frame, text="✅ Confirmar Cierre", bg="#f39c12",
-                  fg="white", font=("Arial", 11, "bold"), relief="flat",
-                  padx=15, pady=10, command=lambda: self.finalizar_caja(popup)).pack(side="right", padx=10)
+        tk.Button(botones, text="🖨️ Imprimir", bg="#34495e", fg="white",
+                 font=("Arial", 10), relief="flat", padx=15, pady=8).pack(side="left", padx=10)
 
-        tk.Button(btn_frame, text="❌ Cancelar", bg=self.danger_color,
-                  fg="white", font=("Arial", 10), relief="flat",
-                  padx=15, pady=10, command=popup.destroy).pack(side="right", padx=5)
+        tk.Button(botones, text="✅ Aceptar", command=lambda: self.finalizar_caja(popup),
+                 bg=self.success_color, fg="white", font=("Arial", 10, "bold"),
+                 relief="flat", padx=15, pady=8).pack(side="right", padx=5)
 
-    def _obtener_saldo_sistema(self):
-        """Suma todas las ventas registradas desde ventas.csv"""
-        total = 0
-        ruta = os.path.join("data", "ventas", "ventas.csv")
-        if os.path.isfile(ruta):
-            with open(ruta, "r", encoding="utf-8") as f:
-                reader = csv.reader(f)
-                next(reader, None)
-                for fila in reader:
-                    try:
-                        total += float(fila[2])
-                    except Exception:
-                        pass
-        return total
-
-    def _calcular_diferencia(self):
-        """Calcula diferencia entre importes ingresados y saldo sistema"""
-        try:
-            efectivo = float(self.entry_caja.get() or 0)
-            transferencia = float(self.entry_transf.get() or 0)
-            diferencia = (efectivo + transferencia) - self.saldo_sistema
-            color = self.success_color if abs(diferencia) < 0.005 else self.danger_color
-            self.lbl_diferencia.config(text=f"${diferencia:.2f}", fg=color)
-        except Exception:
-            messagebox.showerror("Error", "Ingrese montos válidos.")
+        tk.Button(botones, text="❌ Cancelar", command=popup.destroy,
+                 bg=self.danger_color, fg="white", font=("Arial", 10),
+                 relief="flat", padx=15, pady=8).pack(side="right", padx=5)
 
     def finalizar_caja(self, ventana):
-        """Finaliza el cierre: guarda un registro y resetea el estado de caja."""
-        try:
-            efectivo = float(self.entry_caja.get() or 0)
-            transferencia = float(self.entry_transf.get() or 0)
-        except Exception:
-            messagebox.showerror("Error", "Ingrese montos válidos.")
-            return
-
-        diferencia = (efectivo + transferencia) - self.saldo_sistema
-
-        # Guardar en CSV
-        try:
-            os.makedirs("data/cierres", exist_ok=True)
-            ruta = os.path.join("data/cierres", "cierres.csv")
-            existe = os.path.isfile(ruta)
-            with open(ruta, "a", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                if not existe:
-                    writer.writerow(["Fecha", "Saldo Sistema", "Efectivo", "Transferencia", "Diferencia"])
-                writer.writerow([
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    f"{self.saldo_sistema:.2f}",
-                    f"{efectivo:.2f}",
-                    f"{transferencia:.2f}",
-                    f"{diferencia:.2f}"
-                ])
-        except Exception as err:
-            messagebox.showerror("Error", f"No se pudo guardar el cierre:\n{err}")
-            return
-
         messagebox.showinfo("Cierre de Caja", "✅ Caja cerrada correctamente")
         self.monto_apertura = None
         self.actualizar_estado_caja()
