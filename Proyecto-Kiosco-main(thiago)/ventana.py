@@ -7,97 +7,147 @@ from detalle_venta import DetalleVenta
 from metodopago import MetodoPago
 from inventario import buscar_producto_por_codigo
 
-
 class POSWindow(tk.Toplevel):
     def __init__(self, master=None, caja=None):
         super().__init__(master)
         self.title("Punto de Venta - Kiosco")
-        self.geometry("1100x700")
-        self.configure(bg="#dfe6e9")
+        self.geometry("800x450")
+        self.configure(bg="#f0f0f0")
+
+        # 🔥 POSICIÓN: Arriba y centrado
+        self.posicionar_arriba_centrado()
 
         self.caja = caja
         self.venta = Venta("CONSUMIDOR FINAL")
         self._ventana_cantidad = None
 
-        self.create_form()
-        self.create_table()
-        self.create_total_display()
-        self.create_buttons()
-        self.create_shortcuts()
+        self.crear_interfaz()
 
-    def create_form(self):
-        frame = tk.LabelFrame(self, text="Registrar Venta", bg="#dfe6e9",
-                              padx=10, pady=10, font=("Arial", 10, "bold"))
-        frame.pack(fill="x", padx=10, pady=10)
+    def posicionar_arriba_centrado(self):
+        self.update_idletasks()
+        ancho_pantalla = self.winfo_screenwidth()
+        alto_pantalla = self.winfo_screenheight()
+        ancho_ventana = 800
+        alto_ventana = 450
+        x = (ancho_pantalla - ancho_ventana) // 2
+        y = 50
+        self.geometry(f"{ancho_ventana}x{alto_ventana}+{x}+{y}")
 
-        tk.Label(frame, text="Cliente:", bg="#dfe6e9",
-                 font=("Arial", 10, "bold")).grid(row=0, column=0, sticky="e", padx=5)
+    def crear_interfaz(self):
+        # Título principal
+        titulo_frame = tk.Frame(self, bg="#2c3e50", height=60)
+        titulo_frame.pack(fill="x", padx=10, pady=10)
+        titulo_frame.pack_propagate(False)
+        
+        tk.Label(titulo_frame, text="Punto de Venta - Kiosco", 
+                font=("Arial", 18, "bold"), 
+                bg="#2c3e50", fg="white").pack(expand=True)
+
+        # Frame principal con dos columnas
+        main_frame = tk.Frame(self, bg="#f0f0f0")
+        main_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+        # Columna izquierda - Formulario
+        left_frame = tk.Frame(main_frame, bg="#f0f0f0")
+        left_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
+
+        # Frame Registrar Venta
+        form_frame = tk.LabelFrame(left_frame, text="Registrar Venta", 
+                                  bg="#ffffff", fg="#2c3e50",
+                                  font=("Arial", 11, "bold"),
+                                  padx=10, pady=10)
+        form_frame.pack(fill="x", pady=(0, 10))
+
+        # Fila 1: Cliente y Código
+        fila1 = tk.Frame(form_frame, bg="#ffffff")
+        fila1.pack(fill="x", pady=5)
+
+        tk.Label(fila1, text="Cliente:", bg="#ffffff", 
+                font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
         self.cliente_var = tk.StringVar(value="CONSUMIDOR FINAL")
-        tk.Entry(frame, textvariable=self.cliente_var, width=25,
-                 font=("Arial", 10)).grid(row=0, column=1, sticky="w")
+        tk.Entry(fila1, textvariable=self.cliente_var, width=20,
+                font=("Arial", 10), relief="solid", bd=1).pack(side="left", padx=(0, 20))
 
-        tk.Label(frame, text="Fecha:", bg="#dfe6e9",
-                 font=("Arial", 10, "bold")).grid(row=1, column=0, sticky="e", padx=5)
-        tk.Label(frame, text=datetime.now().strftime("%d/%m/%Y %H:%M"),
-                 bg="#dfe6e9", font=("Arial", 10)).grid(row=1, column=1, sticky="w")
-
-        tk.Label(frame, text="Código de producto:", bg="#dfe6e9",
-                 font=("Arial", 10, "bold")).grid(row=0, column=2, padx=10)
-        self.codigo_entry = tk.Entry(frame, width=20, font=("Arial", 10))
-        self.codigo_entry.grid(row=0, column=3, padx=5)
+        tk.Label(fila1, text="Código de producto:", bg="#ffffff",
+                font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
+        self.codigo_entry = tk.Entry(fila1, width=15, font=("Arial", 10),
+                                   relief="solid", bd=1)
+        self.codigo_entry.pack(side="left")
         self.codigo_entry.focus_set()
         self.codigo_entry.bind("<Return>", self.buscar_y_agregar)
 
-        tk.Label(frame, text="Descripción:", bg="#dfe6e9",
-                 font=("Arial", 10, "bold")).grid(row=1, column=2, padx=10)
+        # Fila 2: Fecha y Descripción
+        fila2 = tk.Frame(form_frame, bg="#ffffff")
+        fila2.pack(fill="x", pady=5)
+
+        tk.Label(fila2, text="Fecha:", bg="#ffffff",
+                font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
+        fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M")
+        tk.Label(fila2, text=fecha_actual, bg="#ffffff",
+                font=("Arial", 10)).pack(side="left", padx=(0, 20))
+
+        tk.Label(fila2, text="Descripción:", bg="#ffffff",
+                font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
         self.descripcion_var = tk.StringVar()
-        tk.Label(frame, textvariable=self.descripcion_var, bg="#dfe6e9",
-                 font=("Arial", 10, "italic")).grid(row=1, column=3, sticky="w")
+        tk.Label(fila2, textvariable=self.descripcion_var, bg="#ffffff",
+                font=("Arial", 10), width=20, anchor="w").pack(side="left")
 
-        tk.Label(frame, text="Cantidad actual:", bg="#dfe6e9",
-                 font=("Arial", 10, "bold")).grid(row=2, column=2, padx=10)
+        # Fila 3: Cantidad y Precio
+        fila3 = tk.Frame(form_frame, bg="#ffffff")
+        fila3.pack(fill="x", pady=5)
+
+        tk.Label(fila3, text="Cantidad actual:", bg="#ffffff",
+                font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
         self.cantidad_var = tk.IntVar(value=1)
-        tk.Label(frame, textvariable=self.cantidad_var, bg="#dfe6e9",
-                 font=("Arial", 10, "italic")).grid(row=2, column=3, sticky="w")
+        tk.Label(fila3, textvariable=self.cantidad_var, bg="#ffffff",
+                font=("Arial", 10), width=5).pack(side="left", padx=(0, 20))
 
-        tk.Label(frame, text="Precio unitario:", bg="#dfe6e9",
-                 font=("Arial", 10, "bold")).grid(row=3, column=2, padx=10)
+        tk.Label(fila3, text="Precio unitario:", bg="#ffffff",
+                font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
         self.precio_var = tk.StringVar(value="0.00")
-        tk.Label(frame, textvariable=self.precio_var, bg="#dfe6e9",
-                 font=("Arial", 10, "italic")).grid(row=3, column=3, sticky="w")
+        tk.Label(fila3, textvariable=self.precio_var, bg="#ffffff",
+                font=("Arial", 10), width=10).pack(side="left")
 
-    def create_table(self):
-        table_frame = tk.LabelFrame(self, text="Detalles de Venta",
-                                    bg="#dfe6e9", padx=10, pady=10)
-        table_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        # Frame Detalle de Venta
+        table_frame = tk.LabelFrame(left_frame, text="Detalle de Venta",
+                                   bg="#ffffff", fg="#2c3e50",
+                                   font=("Arial", 11, "bold"),
+                                   padx=10, pady=10)
+        table_frame.pack(fill="both", expand=True, pady=(0, 10))
 
+        # Tabla
         columns = ("Código", "Descripción", "Cantidad", "Precio Unit.", "Subtotal")
-        self.tree = ttk.Treeview(table_frame, columns=columns,
-                                 show="headings", height=12)
-
-        widths = [150, 300, 100, 120, 120]
-        for col, w in zip(columns, widths):
+        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=8)
+        
+        for col in columns:
             self.tree.heading(col, text=col)
-            self.tree.column(col, width=w, anchor="center")
-
-        scrollbar = ttk.Scrollbar(table_frame, orient="vertical",
-                                  command=self.tree.yview)
+            self.tree.column(col, width=100, anchor="center")
+        
+        self.tree.column("Descripción", width=200)
+        
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-    def create_total_display(self):
-        frame = tk.Frame(self, bg="#dfe6e9")
-        frame.pack(fill="x", padx=10, pady=10)
-        self.total_label = tk.Label(frame, text="$ 0.00",
-                                    font=("Arial", 36, "bold"),
-                                    fg="#e74c3c", bg="#dfe6e9")
-        self.total_label.pack(side="right", padx=40)
+        # Columna derecha - Total y Botones
+        right_frame = tk.Frame(main_frame, bg="#f0f0f0", width=200)
+        right_frame.pack(side="right", fill="y", padx=(5, 0))
+        right_frame.pack_propagate(False)
 
-    def create_buttons(self):
-        frame = tk.Frame(self, bg="#dfe6e9")
-        frame.pack(fill="x", padx=10, pady=10)
+        # Display del Total
+        total_frame = tk.LabelFrame(right_frame, text="Total", 
+                                   bg="#ffffff", fg="#2c3e50",
+                                   font=("Arial", 11, "bold"),
+                                   padx=10, pady=10)
+        total_frame.pack(fill="x", pady=(0, 10))
 
+        self.total_label = tk.Label(total_frame, text="$ 0.00",
+                                   font=("Arial", 24, "bold"),
+                                   fg="#e74c3c", bg="#ffffff")
+        self.total_label.pack()
+
+        # Botones en columna
         botones = [
             ("Registrar Venta (F7)", self.registrar_venta, "#27ae60"),
             ("Eliminar Producto (F5)", self.borrar_producto, "#e74c3c"),
@@ -107,17 +157,22 @@ class POSWindow(tk.Toplevel):
             ("Cerrar (F12)", self.cerrar_sistema, "#95a5a6")
         ]
 
-        for i, (text, cmd, color) in enumerate(botones):
-            tk.Button(frame, text=text, command=cmd, width=20, height=2,
-                      font=("Arial", 9, "bold"), bg=color, fg="white").grid(row=0, column=i, padx=3, pady=5)
+        for texto, cmd, color in botones:
+            btn = tk.Button(right_frame, text=texto, command=cmd,
+                          font=("Arial", 9, "bold"), bg=color, fg="white",
+                          width=18, height=2, relief="solid", bd=1)
+            btn.pack(fill="x", pady=3)
 
-    def create_shortcuts(self):
+        self.crear_shortcuts()
+
+    def crear_shortcuts(self):
         self.bind("<F3>", lambda e: self.modificar_cantidad())
         self.bind("<F5>", lambda e: self.borrar_producto())
         self.bind("<F7>", lambda e: self.registrar_venta())
         self.bind("<F9>", lambda e: self.agregar_varios())
         self.bind("<F12>", lambda e: self.cerrar_sistema())
 
+    # ... (los métodos restantes se mantienen igual que en la versión anterior)
     def buscar_y_agregar(self, event=None):
         codigo = self.codigo_entry.get().strip()
         if not codigo:
@@ -240,7 +295,6 @@ class POSWindow(tk.Toplevel):
         popup.lift()
         popup.attributes("-topmost", True)
 
-        # 🔹 Centrar popup sobre la ventana principal
         ancho, alto = 400, 380
         self.update_idletasks()
         x_principal = self.winfo_x()

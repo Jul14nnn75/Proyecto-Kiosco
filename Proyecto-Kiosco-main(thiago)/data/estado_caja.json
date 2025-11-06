@@ -1,7 +1,7 @@
 {
-    "abierta": false,
-    "monto_apertura": 0,
-    "saldo_sistema": 0,
+    "abierta": true,
+    "monto_apertura": 1000.0,
+    "saldo_sistema": 1000.0,
     "ventas": [],
-    "fecha": "2025-11-05 22:39:44"
+    "fecha": "2025-11-06 01:36:38"
 }

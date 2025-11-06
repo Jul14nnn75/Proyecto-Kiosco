@@ -1,4 +1,4 @@
-# 📁 sistema_kiosco.py (versión corregida y más robusta)
+# 📁 main_app.py (versión corregida y más robusta)
 import tkinter as tk
 from tkinter import messagebox
 from turno3 import TurnoUI
@@ -111,6 +111,11 @@ class SistemaKiosco(tk.Tk):
             except TypeError:
                 # Si la clase CajaApp no acepta master en constructor, lo creamos sin args
                 self.ventana_caja = CajaApp()
+            
+            # 🔥 FORZAR POSICIÓN: Abajo y a la izquierda
+            self.ventana_caja.geometry("320x580+30+400")
+            self.ventana_caja.update()
+            
             # configurar comportamiento al cerrarse la ventana de caja
             try:
                 self.ventana_caja.protocol("WM_DELETE_WINDOW", self._on_caja_closed)

@@ -3,15 +3,15 @@ from tkinter import ttk, messagebox
 from datetime import datetime
 import os
 import json
-from cajaAux import CajaPopup, popup_cierre_caja
-from ventana import POSWindow  # tu ventana de facturación
+from cajaAux import VentanaEmergenteCaja, ventana_cierre_caja
+from ventana import POSWindow
 
 class CajaApp(tk.Tk):
     ESTADO_PATH = os.path.join("data", "estado_caja.json")
 
     def __init__(self):
         super().__init__()
-        self.title("💰 Gestión de Caja")
+        self.title("CAJA")
         self.monto_apertura = None
         self.saldo_sistema = 0
         self.ventas_realizadas = []
@@ -29,94 +29,115 @@ class CajaApp(tk.Tk):
         self.success_color = "#27ae60"
         self.danger_color = "#e74c3c"
 
-        # Configuración ventana
-        ancho, alto = 320, 580
-        y = (self.winfo_screenheight() - alto) // 2 - 150
-        self.geometry(f"{ancho}x{alto}+50+{y}")
+        # 🔥 POSICIÓN: Abajo y a la izquierda
+        ancho, alto = 300, 450
+        x = 30
+        y = 400
+        self.geometry(f"{ancho}x{alto}+{x}+{y}")
         self.resizable(False, False)
-        self.configure(bg=self.bg_color)
+        self.configure(bg="#f0f0f0")
 
         os.makedirs("data", exist_ok=True)
 
-        self._configurar_estilo()
         self._crear_interfaz()
         self._cargar_estado()
 
         self.lift()
         self.attributes("-topmost", True)
-
         self.protocol("WM_DELETE_WINDOW", self._guardar_y_salir)
 
-    # ---------- Estilo ----------
-    def _configurar_estilo(self):
-        style = ttk.Style()
-        try:
-            style.theme_use("clam")
-        except:
-            pass
-        style.configure(
-            "Caja.TButton",
-            font=("Arial", 11, "bold"),
-            padding=(10, 8),
-            relief="flat",
-            background=self.accent_color,
-            foreground="white"
-        )
-
-    # ---------- Interfaz ----------
     def _crear_interfaz(self):
-        main = tk.Frame(self, bg=self.bg_color, padx=15, pady=15)
+        # Frame principal
+        main = tk.Frame(self, bg="#f0f0f0", padx=15, pady=15)
         main.pack(fill="both", expand=True)
 
-        tk.Label(main, text="💰 CAJA", font=("Arial", 20, "bold"),
-                 bg=self.bg_color, fg=self.text_color).pack()
-        tk.Label(main, text="Gestión de Efectivo", font=("Arial", 11),
-                 bg=self.bg_color, fg=self.text_color).pack(pady=(0, 20))
+        # Título
+        tk.Label(main, text="CAJA", 
+                font=("Arial", 20, "bold"),
+                bg="#f0f0f0", fg="#2c3e50").pack(pady=(0, 5))
+        
+        tk.Label(main, text="Gestión de Efectivo", 
+                font=("Arial", 10),
+                bg="#f0f0f0", fg="#666").pack(pady=(0, 15))
 
-        self.estado_label = tk.Label(main, text="🔒 CAJA CERRADA",
-                                     font=("Arial", 12, "bold"),
-                                     bg=self.danger_color, fg="white",
-                                     padx=10, pady=8)
-        self.estado_label.pack(fill="x", pady=(0, 15))
+        # Estado de la caja
+        self.estado_label = tk.Label(main, 
+                                    text="🔒 CAJA CERRADA",
+                                    font=("Arial", 12, "bold"),
+                                    bg="#e74c3c", fg="white",
+                                    padx=15, pady=10,
+                                    relief="solid", bd=1)
+        self.estado_label.pack(fill="x", pady=(0, 20))
 
+        # Frame para botones
+        botones_frame = tk.Frame(main, bg="#f0f0f0")
+        botones_frame.pack(fill="both", expand=True)
+
+        # Botones estilo checklist
         botones = [
-            ("📄 Facturar", self.accion_facturar, self.accent_color),
-            ("📂 Apertura", self.accion_apertura, self.success_color),
-            ("💸 Retiro", lambda: self._popup_operacion("Retiro de Caja", "retiro", "#e67e22"), "#e67e22"),
-            ("📋 Gastos", lambda: self._popup_operacion("Registrar Gasto", "gasto", "#e74c3c"), "#e74c3c"),
-            ("💳 Ingreso", lambda: self._popup_operacion("Ingreso de Caja", "ingreso", "#3498db"), "#3498db"),
-            ("🔒 Cierre Caja", self.accion_cierre, "#9b59b6"),
-            ("🚪 Salir", self._guardar_y_salir, "#95a5a6")
+            ("📄 Facturar", self.accion_facturar),
+            ("📂 Apertura", self.accion_apertura),
+            ("💸 Retiro", lambda: self._popup_operacion("Retiro de Caja", "retiro")),
+            ("📋 Gastos", lambda: self._popup_operacion("Registrar Gasto", "gasto")),
+            ("💳 Ingreso", lambda: self._popup_operacion("Ingreso de Caja", "ingreso")),
+            ("🔒 Cierre Caja", self.accion_cierre),
+            ("🚪 Salir", self._guardar_y_salir)
         ]
 
-        for texto, comando, color in botones:
-            f = tk.Frame(main, bg=self.bg_color, height=55)
-            f.pack(fill="x", pady=4)
-            f.pack_propagate(False)
-            btn = tk.Button(f, text=texto, command=comando, font=("Arial", 11, "bold"),
-                            bg=color, fg="white", relief="flat", bd=0,
-                            cursor="hand2", padx=15, pady=12, anchor="w")
-            btn.pack(fill="both", expand=True, padx=2)
-            btn.bind("<Enter>", lambda e, b=btn, c=color: b.config(bg=self._oscurecer(c, 20)))
-            btn.bind("<Leave>", lambda e, b=btn, c=color: b.config(bg=c))
-
-    # ---------- Utilidades ----------
-    def _oscurecer(self, color, amt):
-        c = color.lstrip("#")
-        r, g, b = [max(0, int(c[i:i+2], 16) - amt) for i in (0, 2, 4)]
-        return f"#{r:02x}{g:02x}{b:02x}"
+        for i, (texto, comando) in enumerate(botones):
+            btn_frame = tk.Frame(botones_frame, bg="#f0f0f0")
+            btn_frame.pack(fill="x", pady=3)
+            
+            # Simular checkbox con texto
+            btn = tk.Label(btn_frame, text=f"□ {texto}", 
+                          font=("Arial", 11),
+                          bg="#f8f9fa", fg="#2c3e50",
+                          padx=15, pady=10,
+                          relief="solid", bd=1,
+                          cursor="hand2")
+            btn.pack(fill="x")
+            
+            # Bind clicks
+            btn.bind("<Button-1>", lambda e, cmd=comando: cmd())
+            
+            # Efecto hover
+            btn.bind("<Enter>", lambda e, b=btn: b.config(bg="#e9ecef"))
+            btn.bind("<Leave>", lambda e, b=btn: b.config(bg="#f8f9fa"))
 
     def _actualizar_estado(self):
         if self.monto_apertura is not None:
+            saldo_formateado = f"{self.saldo_sistema:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             self.estado_label.config(
-                text=f"✅ CAJA ABIERTA - ${self.saldo_sistema:.2f}",
-                bg=self.success_color
+                text=f"✅ CAJA ABIERTA - ${saldo_formateado}",
+                bg="#27ae60"
             )
+            # Marcar apertura como "checked"
+            self._marcar_boton_como_activado(1)
         else:
             self.estado_label.config(
                 text="🔒 CAJA CERRADA",
-                bg=self.danger_color
+                bg="#e74c3c"
             )
+            # Marcar apertura como "unchecked"
+            self._marcar_boton_como_desactivado(1)
+
+    def _marcar_boton_como_activado(self, indice):
+        """Cambia el símbolo de □ a ✓ para indicar activado"""
+        botones_frame = self.winfo_children()[0].winfo_children()[2]  # Frame de botones
+        if indice < len(botones_frame.winfo_children()):
+            btn = botones_frame.winfo_children()[indice].winfo_children()[0]
+            texto_actual = btn.cget("text")
+            nuevo_texto = texto_actual.replace("□", "✓")
+            btn.config(text=nuevo_texto, fg="#27ae60")
+
+    def _marcar_boton_como_desactivado(self, indice):
+        """Cambia el símbolo de ✓ a □ para indicar desactivado"""
+        botones_frame = self.winfo_children()[0].winfo_children()[2]  # Frame de botones
+        if indice < len(botones_frame.winfo_children()):
+            btn = botones_frame.winfo_children()[indice].winfo_children()[0]
+            texto_actual = btn.cget("text")
+            nuevo_texto = texto_actual.replace("✓", "□")
+            btn.config(text=nuevo_texto, fg="#2c3e50")
 
     # ---------- Persistencia ----------
     def _guardar_estado(self):
@@ -153,34 +174,38 @@ class CajaApp(tk.Tk):
         ventana = POSWindow(caja=self)
         ventana.transient(self)
         ventana.grab_set()
-        ventana.geometry("1000x650+350+200")
 
     def accion_apertura(self):
         if self.monto_apertura is not None:
             messagebox.showerror("Error", "La caja ya está abierta.")
             return
-        CajaPopup(self, "Apertura de Caja", "apertura", self.success_color, self._set_apertura)
+        VentanaEmergenteCaja(self, "Apertura de Caja", "apertura", self.success_color, self._set_apertura)
 
     def _set_apertura(self, monto, motivo):
         self.monto_apertura = monto
-        self.saldo_sistema = monto  # Apertura suma al saldo
+        self.saldo_sistema = monto
         self.ventas_realizadas = []
         self._actualizar_estado()
         self._guardar_estado()
 
-    def _popup_operacion(self, titulo, tipo, color):
+    def _popup_operacion(self, titulo, tipo):
         if not self.monto_apertura:
             messagebox.showerror("Error", "Debe abrir la caja primero.")
             return
-        CajaPopup(self, titulo, tipo, color)
+        
+        colores = {
+            "retiro": "#e67e22",
+            "gasto": "#e74c3c", 
+            "ingreso": "#3498db"
+        }
+        VentanaEmergenteCaja(self, titulo, tipo, colores.get(tipo, "#3498db"))
 
     def accion_cierre(self):
         if not self.monto_apertura:
             messagebox.showerror("Error", "Debe abrir la caja para cerrarla.")
             return
-        popup_cierre_caja(self)
+        ventana_cierre_caja(self)
 
-    # ---------- Integración con Ventana de Venta ----------
     def _registrar_venta_en_caja(self, total, detalles):
         try:
             total_num = float(total)
@@ -197,10 +222,6 @@ class CajaApp(tk.Tk):
         })
         self._guardar_estado()
         self._actualizar_estado()
-
-    def accion_salir(self):
-        self._guardar_y_salir()
-
 
 if __name__ == "__main__":
     app = CajaApp()
